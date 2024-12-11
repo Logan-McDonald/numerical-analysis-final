@@ -40,7 +40,7 @@ def piecewise(file, step=None):
             # Append to the overall lists
             x_interp.extend(x_segment)
             y_interp.extend(y_segment)
-        
+
         return x_interp, y_interp
     
     dates, case_count = feedCSVData(file)
@@ -50,6 +50,7 @@ def piecewise(file, step=None):
     plt.plot(x_interp, y_interp, label='Piecewise Linear Interpolation 100 percent of data', color='blue')
     
     # If a set is step, graph will plot extra line with step
+    y_interp_step = None
     if step != None:
         dates_step, case_count_step = feedCSVData(file, step=step)
         x_interp_step, y_interp_step = eq(dates_step, case_count_step)
@@ -70,9 +71,20 @@ def piecewise(file, step=None):
     plt.tight_layout()
     plt.show()
     
+    return y_interp, y_interp_step
+    
+def MSE(actual_list, predicted_list, step):
+    step = 100/step
+    mse = 0
+    for x, x_hat in zip(actual_list[::100], predicted_list[::int(step)]):
+        mse += (x - x_hat)**2
+    final_mse = (1/(len(actual_list)-1)) * mse
+    
+    return final_mse
+    
 if __name__ == "__main__":
     file = "COVID-19_Daily_Counts_of_Cases__Hospitalizations__and_Deaths.csv"
-    piecewise(file)
-    # piecewise(file, step=2)
-    # piecewise(file, step=4)
-    # piecewise(file, step=10)
+    step = 1
+    # y_interp, y_interp_step = piecewise(file)
+    y_interp, y_interp_step = piecewise(file, step=step)
+    print(f'Mean squared error = {MSE(y_interp, y_interp_step, step):.2f}')
