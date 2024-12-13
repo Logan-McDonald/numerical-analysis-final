@@ -64,7 +64,7 @@ def quadratic_spline(file, reset_date, step, step2):
     
     dates, case_count = feedCSVData(file)
     plt.figure(figsize=(12, 6))
-    plt.scatter(dates, case_count, color='red', label='Original Data', zorder=5)
+    plt.scatter(dates, case_count, color='green', label='Original Data', zorder=5)
     
     # Split the data into two segments: before and after the reset date
     reset_date = datetime.strptime(reset_date, '%Y-%m-%d')
@@ -86,7 +86,7 @@ def quadratic_spline(file, reset_date, step, step2):
         # Combine the results
         dense_dates2 = dense_dates_before + dense_dates_after
         dense_case_count2 = dense_case_count_before + dense_case_count_after
-        plt.plot(mdates.num2date(dense_dates2), dense_case_count2, label=f'Quadratic Spline Interpolation of {100/step2}% of the data', color='green')
+        plt.plot(mdates.num2date(dense_dates2), dense_case_count2, label=f'Quadratic Spline Interpolation of {100/step2}% of the data', color='red')
 
     plt.title('Quadratic Spline Interpolation with Reset')
     plt.xlabel('Date')

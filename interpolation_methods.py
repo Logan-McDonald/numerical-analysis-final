@@ -4,16 +4,12 @@ import numpy as np
 import matplotlib.dates as mdates
 from datetime import datetime, timedelta
 
-def feedCSVData(file, step):
+def feedCSVData(file):
     data_frame = pandas.read_csv(file)
     
     # Extract dates and case counts
-    all_dates = data_frame["date_of_interest"].tolist()
-    all_case_count = data_frame["CASE_COUNT"].tolist()
-    
-    # Select data points based on step
-    dates = all_dates[::step]
-    case_count = all_case_count[::step]
+    dates = data_frame["date_of_interest"].tolist()
+    case_count = data_frame["CASE_COUNT"].tolist()
     
     # Convert string dates to datetime objects
     dates = [datetime.strptime(date, '%m/%d/%Y') for date in dates]
@@ -44,18 +40,16 @@ def piecewise(file, step, step2=None):
         return x_interp, y_interp
     
     # In case of user didnt choose 100% for one of the steps, plot data properly.
-    full_dates, full_casecount = feedCSVData(file, 1)
+    dates, case_count = feedCSVData(file)
     plt.figure(figsize=(12, 6))
-    plt.scatter(full_dates, full_casecount, color='green', label='Original Points')
+    plt.scatter(dates, case_count, color='green', label='Original Points')
     
-    dates, case_count = feedCSVData(file, step)
-    x_interp, y_interp = eq(dates, case_count)
+    x_interp, y_interp = eq(dates[::step], case_count[::step])
     plt.plot(x_interp, y_interp, label=f'Piecewise Linear Interpolation {int(100/step)}% of data', color='blue')
     
     y_interp2 = None
     if step2 != None:
-        dates2, case_count2 = feedCSVData(file, step2)
-        x_interp2, y_interp2 = eq(dates2, case_count2)
+        x_interp2, y_interp2 = eq(dates[::step2], case_count[::step2])
         plt.plot(x_interp2, y_interp2, label=f'Piecewise Linear Interpolation {int(100/step2)}% of data', color='red')
     
     plt.title(f'Piecewise Linear Interpolation of Covid Cases')
