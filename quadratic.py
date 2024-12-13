@@ -17,7 +17,7 @@ def feedCSVData(file):
     
     return dates, case_count
 
-def quadratic_spline(dates, case_count):
+def quadratic_spline_segment(dates, case_count):
     # Convert dates to numeric format for interpolation
     numeric_dates = mdates.date2num(dates)
 
@@ -59,12 +59,27 @@ def quadratic_spline(dates, case_count):
         dense_dates.extend(x_vals)
         dense_case_count.extend(y_vals)
 
+    return dense_dates, dense_case_count
+
+def quadratic_spline(dates, case_count, reset_date):
+    # Split the data into two segments: before and after the reset date
+    reset_date = datetime.strptime(reset_date, '%Y-%m-%d')
+    split_index = next(i for i, date in enumerate(dates) if date >= reset_date)
+
+    # Interpolate each segment separately
+    dense_dates_before, dense_case_count_before = quadratic_spline_segment(dates[:split_index], case_count[:split_index])
+    dense_dates_after, dense_case_count_after = quadratic_spline_segment(dates[split_index:], case_count[split_index:])
+
+    # Combine the results
+    dense_dates = dense_dates_before + dense_dates_after
+    dense_case_count = dense_case_count_before + dense_case_count_after
+
     # Plot the results
     plt.figure(figsize=(12, 6))
     plt.plot(mdates.num2date(dense_dates), dense_case_count, label='Quadratic Spline Interpolation', color='blue')
     plt.scatter(dates, case_count, color='red', label='Original Data', zorder=5)
 
-    plt.title('Quadratic Spline Interpolation')
+    plt.title('Quadratic Spline Interpolation with Reset')
     plt.xlabel('Date')
     plt.ylabel('Case Count')
     plt.grid(alpha=0.5)
@@ -82,4 +97,5 @@ if __name__ == "__main__":
     file = "COVID-19_Daily_Counts_of_Cases__Hospitalizations__and_Deaths.csv"
     dates, case_count = feedCSVData(file)
     
-    quadratic_spline(dates, case_count)
+    reset_date = "2022-01-28"
+    quadratic_spline(dates, case_count, reset_date)
