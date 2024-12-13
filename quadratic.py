@@ -1,19 +1,18 @@
-import pandas as pd
+import pandas
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.dates as mdates
 from datetime import datetime
 
 def feedCSVData(file):
-    data_frame = pd.read_csv(file)
+    data_frame = pandas.read_csv(file)
     
-    # Extract dates from the CSV file
+    # Extract dates and case counts
     dates = data_frame["date_of_interest"].tolist()
+    case_count = data_frame["CASE_COUNT"].tolist()
     
     # Convert string dates to datetime objects
     dates = [datetime.strptime(date, '%m/%d/%Y') for date in dates]
-    
-    case_count = data_frame["CASE_COUNT"].tolist()
     
     return dates, case_count
 
@@ -61,23 +60,33 @@ def quadratic_spline_segment(dates, case_count):
 
     return dense_dates, dense_case_count
 
-def quadratic_spline(dates, case_count, reset_date):
+def quadratic_spline(file, reset_date, step, step2):
+    
+    dates, case_count = feedCSVData(file)
+    plt.figure(figsize=(12, 6))
+    plt.scatter(dates, case_count, color='red', label='Original Data', zorder=5)
+    
     # Split the data into two segments: before and after the reset date
     reset_date = datetime.strptime(reset_date, '%Y-%m-%d')
     split_index = next(i for i, date in enumerate(dates) if date >= reset_date)
-
+    
     # Interpolate each segment separately
-    dense_dates_before, dense_case_count_before = quadratic_spline_segment(dates[:split_index], case_count[:split_index])
-    dense_dates_after, dense_case_count_after = quadratic_spline_segment(dates[split_index:], case_count[split_index:])
-
+    dense_dates_before, dense_case_count_before = quadratic_spline_segment(dates[:split_index:step], case_count[:split_index:step])
+    dense_dates_after, dense_case_count_after = quadratic_spline_segment(dates[split_index::step], case_count[split_index::step])
     # Combine the results
     dense_dates = dense_dates_before + dense_dates_after
     dense_case_count = dense_case_count_before + dense_case_count_after
-
-    # Plot the results
-    plt.figure(figsize=(12, 6))
-    plt.plot(mdates.num2date(dense_dates), dense_case_count, label='Quadratic Spline Interpolation', color='blue')
-    plt.scatter(dates, case_count, color='red', label='Original Data', zorder=5)
+    plt.plot(mdates.num2date(dense_dates), dense_case_count, label=f'Quadratic Spline Interpolation of {100/step}% of the data', color='blue')
+    
+    dense_case_count2 = None
+    if step2 != None:
+        # Interpolate each segment separately
+        dense_dates_before, dense_case_count_before = quadratic_spline_segment(dates[:split_index:step2], case_count[:split_index:step2])
+        dense_dates_after, dense_case_count_after = quadratic_spline_segment(dates[split_index::step2], case_count[split_index::step2])
+        # Combine the results
+        dense_dates2 = dense_dates_before + dense_dates_after
+        dense_case_count2 = dense_case_count_before + dense_case_count_after
+        plt.plot(mdates.num2date(dense_dates2), dense_case_count2, label=f'Quadratic Spline Interpolation of {100/step2}% of the data', color='green')
 
     plt.title('Quadratic Spline Interpolation with Reset')
     plt.xlabel('Date')
@@ -92,10 +101,36 @@ def quadratic_spline(dates, case_count, reset_date):
 
     plt.tight_layout()
     plt.show()
+    
+    return dense_case_count, dense_case_count2
+    
+def MSE(actual_list, predicted_list, step, step2):
+    step = 100/step
+    step2 = 100/step2
+    mse = 0
+    for x, x_hat in zip(actual_list[::int(step)], predicted_list[::int(step2)]):
+        mse += (x - x_hat)**2
+    final_mse = (1/(len(actual_list)-1)) * mse
+    
+    return np.sqrt(final_mse)
 
 if __name__ == "__main__":
     file = "COVID-19_Daily_Counts_of_Cases__Hospitalizations__and_Deaths.csv"
-    dates, case_count = feedCSVData(file)
-    
     reset_date = "2022-01-28"
-    quadratic_spline(dates, case_count, reset_date)
+    type_graph = input("What type of graph would you like to produce? (C for compartative or S for single): ").lower()
+    
+    if type_graph == "s":
+        step = int(input("What percentage of the data would you like to see? (100, 50, 25, or 10): "))
+        step = int(100/step)
+        step2 = None
+        
+        actual_list, predicted_list = quadratic_spline(file, reset_date, step, step2)
+    elif type_graph == "c":
+        step = int(input("What percentage of the data would you like to see for the first line? (100, 50, 25, or 10): "))
+        step = int(100/step)
+        
+        step2 = int(input("What percentage of the data would you like to see for the second line? (100, 50, 25, or 10): "))
+        step2 = int(100/step2)
+        
+        actual_list, predicted_list = quadratic_spline(file, reset_date, step, step2)
+        print(f'Mean squared error between {int(100/step)}% and {int(100/step2)}% of data = {MSE(actual_list, predicted_list, step, step2):.2f}')
