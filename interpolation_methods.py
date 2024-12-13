@@ -2,9 +2,10 @@ import pandas
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.dates as mdates
+import math
 from datetime import datetime, timedelta
 
-def feedCSVData(file, step=1):
+def feedCSVData(file, step):
     data_frame = pandas.read_csv(file)
     
     # Extract dates and case counts
@@ -20,7 +21,7 @@ def feedCSVData(file, step=1):
     
     return dates, case_count
     
-def piecewise(file, step=None):
+def piecewise(file, step, step2=None):
     
     def eq(dates, case_count):
 
@@ -40,22 +41,24 @@ def piecewise(file, step=None):
             # Append to the overall lists
             x_interp.extend(x_segment)
             y_interp.extend(y_segment)
-        
+
         return x_interp, y_interp
     
-    dates, case_count = feedCSVData(file)
-    x_interp, y_interp = eq(dates, case_count)
-
+    # In case of user didnt choose 100% for one of the steps, plot data properly.
+    full_dates, full_casecount = feedCSVData(file, 1)
     plt.figure(figsize=(12, 6))
-    plt.plot(x_interp, y_interp, label='Piecewise Linear Interpolation 100 percent of data', color='blue')
+    plt.scatter(full_dates, full_casecount, color='green', label='Original Points')
     
-    # If a set is step, graph will plot extra line with step
-    if step != None:
-        dates_step, case_count_step = feedCSVData(file, step=step)
-        x_interp_step, y_interp_step = eq(dates_step, case_count_step)
-        plt.plot(x_interp_step, y_interp_step, label=f'Piecewise Linear Interpolation {100/step} percent of data', color='red')
+    dates, case_count = feedCSVData(file, step)
+    x_interp, y_interp = eq(dates, case_count)
+    plt.plot(x_interp, y_interp, label=f'Piecewise Linear Interspolation {int(100/step)}% of data', color='blue')
     
-    plt.scatter(dates, case_count, color='green', label='Original Points')
+    y_interp2 = None
+    if step2 != None:
+        dates2, case_count2 = feedCSVData(file, step2)
+        x_interp2, y_interp2 = eq(dates2, case_count2)
+        plt.plot(x_interp2, y_interp2, label=f'Piecewise Linear Interpolation {int(100/step2)}% of data', color='red')
+    
     plt.title(f'Piecewise Linear Interpolation of Covid Cases')
     plt.xlabel('Dates')
     plt.ylabel('Case Count')
@@ -70,9 +73,34 @@ def piecewise(file, step=None):
     plt.tight_layout()
     plt.show()
     
+    return y_interp, y_interp2
+    
+def MSE(actual_list, predicted_list, step, step2):
+    step = 100/step
+    step2 = 100/step2
+    mse = 0
+    for x, x_hat in zip(actual_list[::int(step)], predicted_list[::int(step2)]):
+        mse += (x - x_hat)**2
+    final_mse = (1/(len(actual_list)-1)) * mse
+    
+    return math.sqrt(final_mse)
+    
 if __name__ == "__main__":
     file = "COVID-19_Daily_Counts_of_Cases__Hospitalizations__and_Deaths.csv"
-    piecewise(file)
-    # piecewise(file, step=2)
-    # piecewise(file, step=4)
-    # piecewise(file, step=10)
+    type_graph = input("What type of graph would you like to produce? (C for compartative or S for single): ").lower()
+    
+    if type_graph == "s":
+        step = int(input("What percentage of the data would you like to see? (100, 50, 25, or 10): "))
+        step = int(100/step)
+        step2 = None
+        
+        y_interp, y_interp2 = piecewise(file, step, step2)
+    elif type_graph == "c":
+        step = int(input("What percentage of the data would you like to see for the first line? (100, 50, 25, or 10): "))
+        step = int(100/step)
+        
+        step2 = int(input("What percentage of the data would you like to see for the second line? (100, 50, 25, or 10): "))
+        step2 = int(100/step2)
+        
+        y_interp, y_interp2 = piecewise(file, step, step2)
+        print(f'Mean squared error between {int(100/step)}% and {int(100/step2)}% of data = {MSE(y_interp, y_interp2, step, step2):.2f}')
