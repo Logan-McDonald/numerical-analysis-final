@@ -2,6 +2,7 @@ import pandas
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.dates as mdates
+import math
 from datetime import datetime, timedelta
 
 def feedCSVData(file, step):
@@ -50,7 +51,7 @@ def piecewise(file, step, step2=None):
     
     dates, case_count = feedCSVData(file, step)
     x_interp, y_interp = eq(dates, case_count)
-    plt.plot(x_interp, y_interp, label=f'Piecewise Linear Interpolation {int(100/step)}% of data', color='blue')
+    plt.plot(x_interp, y_interp, label=f'Piecewise Linear Interspolation {int(100/step)}% of data', color='blue')
     
     y_interp2 = None
     if step2 != None:
@@ -82,7 +83,7 @@ def MSE(actual_list, predicted_list, step, step2):
         mse += (x - x_hat)**2
     final_mse = (1/(len(actual_list)-1)) * mse
     
-    return final_mse
+    return math.sqrt(final_mse)
     
 if __name__ == "__main__":
     file = "COVID-19_Daily_Counts_of_Cases__Hospitalizations__and_Deaths.csv"
