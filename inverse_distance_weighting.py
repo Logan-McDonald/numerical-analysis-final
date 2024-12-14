@@ -27,7 +27,7 @@ def inverse_distance_weighting(dates, case_count, num_points=100):
 
     for x in x_interp:
         distances = np.abs(date_nums - x)
-        weights = 1 / (distances + 1e-6)  # Do NOT divide by zero, so add a small epsilon to avoid that here
+        weights = 1 / (distances + 1e-6) # Do NOT divide by zero, so add a small epsilon to avoid that here
         
         y_value = np.sum(weights * case_count) / np.sum(weights)
         y_interp.append(y_value)
@@ -39,7 +39,7 @@ def plot_idw_comparison(file, step1, step2=None, num_points=100):
     full_dates, full_case_count = feedCSVData(file, step=1)
 
     plt.figure(figsize=(12, 6))
-    plt.scatter(full_dates, full_case_count, color='green', label='Original Points')
+    plt.scatter(full_dates, full_case_count, color='green', label='Original Data Points')
 
     dates1, case_count1 = feedCSVData(file, step=step1)
     x_interp1, y_interp1 = inverse_distance_weighting(dates1, case_count1, num_points=num_points)
@@ -74,6 +74,22 @@ def calculate_rmse(y_actual, y_predicted):
     mse = np.mean((np.array(y_actual) - np.array(y_predicted_resampled)) ** 2)
     return np.sqrt(mse)
 
+def calculate_rmse_with_original(file, step, num_points=100):
+    original_dates, original_case_count = feedCSVData(file, step=1)
+    
+    dates_step, case_count_step = feedCSVData(file, step=step)
+    _, interpolated_values = inverse_distance_weighting(dates_step, case_count_step, num_points=num_points)
+
+    interpolated_resampled = np.interp(
+        mdates.date2num(original_dates),
+        np.linspace(mdates.date2num(dates_step[0]), mdates.date2num(dates_step[-1]), num_points),
+        interpolated_values
+    )
+
+    # Calculate RMSE between original data points and resampled interpolated values
+    rmse = np.sqrt(np.mean((np.array(original_case_count) - interpolated_resampled) ** 2))
+    return rmse
+
 if __name__ == "__main__":
     file = "COVID-19_Daily_Counts_of_Cases__Hospitalizations__and_Deaths.csv"
     type_graph = input("What type of graph would you like to produce? (C for comparative or S for single): ").lower()
@@ -82,6 +98,8 @@ if __name__ == "__main__":
         step = int(input("What percentage of the data would you like to see? (100, 50, 25, or 10): "))
         step = int(100 / step)
         y_interp1, _ = plot_idw_comparison(file, step1=step)
+        rmse = calculate_rmse_with_original(file, step, num_points=100)
+        print(f"Root Mean Squared Error (RMSE) compared to original data: {rmse:.4f}")
     elif type_graph == "c":
         step1 = int(input("What percentage of the data would you like to see for the first line? (100, 50, 25, or 10): "))
         step1 = int(100 / step1)
@@ -92,5 +110,7 @@ if __name__ == "__main__":
         y_interp1, y_interp2 = plot_idw_comparison(file, step1=step1, step2=step2)
 
         if y_interp2 is not None:
-            rmse = calculate_rmse(y_interp1, y_interp2)
-            print(f"Root Mean Squared Error (RMSE) between {int(100/step1)}% and {int(100/step2)}% of data: {rmse:.4f}")
+            rmse1 = calculate_rmse_with_original(file, step1, num_points=100)
+            rmse2 = calculate_rmse_with_original(file, step2, num_points=100)
+            print(f"Root Mean Squared Error (RMSE) for {int(100/step1)}% data compared to original: {rmse1:.4f}")
+            print(f"Root Mean Squared Error (RMSE) for {int(100/step2)}% data compared to original: {rmse2:.4f}")
